@@ -9,6 +9,7 @@ import { SuggestionsList } from "@/components/SuggestionsList";
 import { LoadingState } from "@/components/LoadingState";
 import { UserManager } from "@/components/UserManager";
 import { TodayReposPicker } from "@/components/TodayReposPicker";
+import { ChatPanel } from "@/components/ChatPanel";
 import { SavedUser, ReviewResponse, RepoWithCount } from "@/types";
 
 const STORAGE_KEY = "commitiq_users";
@@ -190,6 +191,7 @@ export default function Home() {
                 <StatsPanel data={reviewResult} />
                 <HighlightsList highlights={reviewResult.highlights} />
                 <SuggestionsList suggestions={reviewResult.suggestions} />
+                <ChatPanel review={reviewResult} />
               </div>
             )}
           </>
