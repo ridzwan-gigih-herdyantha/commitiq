@@ -13,14 +13,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { username, repo, owner, range = "30d", maxCommits = 50 } = body;
+  const { username, repo, owner, range = "30d", maxCommits = 50, pat } = body;
   if (!username || !repo || !owner) {
     return NextResponse.json({ error: "username, repo, owner required" }, { status: 400 });
   }
 
   try {
     const since = rangeToSince(range);
-    const commits = await getCommits(owner, repo, username, since, maxCommits);
+    const commits = await getCommits(owner, repo, username, since, maxCommits, pat);
 
     if (commits.length === 0) {
       return NextResponse.json({ error: "No commits found for this range" }, { status: 404 });

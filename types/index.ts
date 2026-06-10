@@ -15,12 +15,20 @@ export interface Commit {
   }[];
 }
 
+export interface SavedUser {
+  id: string;
+  displayName: string;
+  username: string;
+  pat: string;
+}
+
 export interface ReviewRequest {
   username: string;
   repo: string;
   owner: string;
   range?: string;
   maxCommits?: number;
+  pat?: string;
 }
 
 export interface ReviewResponse {
@@ -50,4 +58,8 @@ export interface Repo {
   stargazerCount: number;
   primaryLanguage: string | null;
   updatedAt: string;
+}
+
+export interface RepoWithCount extends Repo {
+  commitCount: number;
 }
