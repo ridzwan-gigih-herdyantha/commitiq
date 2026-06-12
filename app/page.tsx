@@ -37,6 +37,9 @@ export default function Home() {
   const [reposError, setReposError] = useState("");
 
   const [selectedRepo, setSelectedRepo] = useState<RepoWithCount | null>(null);
+  const [branches, setBranches] = useState<string[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [branchesLoading, setBranchesLoading] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewResult, setReviewResult] = useState<ReviewResponse | null>(null);
   const [reviewError, setReviewError] = useState("");
@@ -50,6 +53,8 @@ export default function Home() {
     setReposError("");
     setTodayRepos([]);
     setSelectedRepo(null);
+    setBranches([]);
+    setSelectedBranch(null);
     setReviewResult(null);
     setReviewError("");
     try {
@@ -81,6 +86,40 @@ export default function Home() {
   async function handleSelectRepo(repo: RepoWithCount) {
     if (!selectedUser) return;
     setSelectedRepo(repo);
+    setBranches([]);
+    setSelectedBranch(null);
+    setReviewResult(null);
+    setReviewError("");
+    setBranchesLoading(true);
+    try {
+      const res = await fetch("/api/branches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: selectedUser.username,
+          owner: repo.owner,
+          repo: repo.name,
+          pat: selectedUser.pat,
+        }),
+      });
+      const data = await res.json();
+      const fetchedBranches: string[] = res.ok ? (data.branches ?? []) : [];
+      setBranches(fetchedBranches);
+      const defaultBranch = fetchedBranches[0] ?? null;
+      setSelectedBranch(defaultBranch);
+      if (defaultBranch) {
+        await triggerReview(repo, defaultBranch);
+      }
+    } catch {
+      // ignore branch fetch errors, fall back to default branch
+      await triggerReview(repo, null);
+    } finally {
+      setBranchesLoading(false);
+    }
+  }
+
+  async function triggerReview(repo: RepoWithCount, branch: string | null) {
+    if (!selectedUser) return;
     setReviewLoading(true);
     setReviewError("");
     setReviewResult(null);
@@ -94,6 +133,7 @@ export default function Home() {
           owner: repo.owner,
           range: "today",
           pat: selectedUser.pat,
+          ...(branch ? { branch } : {}),
         }),
       });
       const data = await res.json();
@@ -104,6 +144,12 @@ export default function Home() {
     } finally {
       setReviewLoading(false);
     }
+  }
+
+  async function handleSelectBranch(branch: string) {
+    if (!selectedRepo) return;
+    setSelectedBranch(branch);
+    await triggerReview(selectedRepo, branch);
   }
 
   return (
@@ -171,6 +217,31 @@ export default function Home() {
               onSelect={handleSelectRepo}
               selectedRepo={selectedRepo ? `${selectedRepo.owner}/${selectedRepo.name}` : null}
             />
+          </div>
+        )}
+
+        {/* Branch selector */}
+        {selectedRepo && branches.length > 1 && (
+          <div className="bg-card border rounded-xl p-4 mb-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Branch
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {branches.map((branch) => (
+                <button
+                  key={branch}
+                  onClick={() => handleSelectBranch(branch)}
+                  disabled={reviewLoading || branchesLoading}
+                  className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
+                    selectedBranch === branch
+                      ? "border-primary bg-accent font-medium"
+                      : "bg-background hover:bg-accent"
+                  }`}
+                >
+                  {branch}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

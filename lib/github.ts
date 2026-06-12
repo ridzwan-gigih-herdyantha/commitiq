@@ -81,15 +81,49 @@ export async function getUserRepos(login: string, token?: string) {
   }));
 }
 
+export async function getBranchesWithTodayCommits(
+  owner: string,
+  repo: string,
+  author: string,
+  token?: string
+): Promise<string[]> {
+  const branchesRes = await fetch(
+    `${GITHUB_REST}/repos/${owner}/${repo}/branches?per_page=100`,
+    { headers: makeHeaders(token) }
+  );
+  if (!branchesRes.ok) return [];
+  const branches: { name: string }[] = await branchesRes.json();
+
+  const since = new Date();
+  since.setHours(0, 0, 0, 0);
+  const sinceISO = since.toISOString();
+
+  const results = await Promise.all(
+    branches.slice(0, 30).map(async (branch) => {
+      const res = await fetch(
+        `${GITHUB_REST}/repos/${owner}/${repo}/commits?author=${encodeURIComponent(author)}&since=${sinceISO}&sha=${encodeURIComponent(branch.name)}&per_page=1`,
+        { headers: makeHeaders(token) }
+      );
+      if (!res.ok) return null;
+      const commits = await res.json();
+      return Array.isArray(commits) && commits.length > 0 ? branch.name : null;
+    })
+  );
+
+  return results.filter((b): b is string => b !== null);
+}
+
 export async function getCommits(
   owner: string,
   repo: string,
   author: string,
   since: string,
   maxCommits = 50,
-  token?: string
+  token?: string,
+  branch?: string
 ): Promise<Commit[]> {
-  const url = `${GITHUB_REST}/repos/${owner}/${repo}/commits?author=${author}&since=${since}&per_page=${Math.min(maxCommits, 100)}`;
+  const branchParam = branch ? `&sha=${encodeURIComponent(branch)}` : "";
+  const url = `${GITHUB_REST}/repos/${owner}/${repo}/commits?author=${author}&since=${since}&per_page=${Math.min(maxCommits, 100)}${branchParam}`;
   const res = await fetch(url, { headers: makeHeaders(token) });
   if (!res.ok) throw new Error(`GitHub REST error: ${res.status}`);
   const commits = await res.json();

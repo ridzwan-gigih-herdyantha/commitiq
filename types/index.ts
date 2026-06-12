@@ -29,6 +29,7 @@ export interface ReviewRequest {
   range?: string;
   maxCommits?: number;
   pat?: string;
+  branch?: string;
 }
 
 export interface ReviewResponse {
